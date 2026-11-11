@@ -1,11 +1,6 @@
-# ==========================================================
-# PRE 2025 DATA TASK
 # Air Pollution and Mortality Analysis
-# ==========================================================
 
-# ----------------------------------------------------------
 # 1. PACKAGES
-# ----------------------------------------------------------
 
 library(haven)
 library(dplyr)
@@ -14,27 +9,18 @@ library(ggplot2)
 library(lubridate)
 library(fixest)
 
-# ----------------------------------------------------------
 # 2. WORKING DIRECTORY
-# ----------------------------------------------------------
 
 getwd()
-
 setwd("C:/Users/Shivalee/Downloads/PRE2025")
-
 list.files()
 
-# ----------------------------------------------------------
 # 3. LOAD DATA
-# ----------------------------------------------------------
 
 pm <- read_dta("data-task-2025-pm.dta")
-
 ozone <- read_dta("data-task-2025-ozone.dta")
 
-# ----------------------------------------------------------
 # 4. INSPECT DATA
-# ----------------------------------------------------------
 
 str(pm)
 head(pm)
@@ -50,11 +36,24 @@ nrow(ozone)
 
 # Unique county-monitor-day observations
 
+pm <- pm %>%
+  mutate(
+    county_code = as.character(county_code),
+    siteid = as.character(siteid)
+  )
+
 nrow(
   unique(
     ozone[, c("date", "siteid", "county_code")]
   )
 )
+
+ozone <- ozone %>%
+  mutate(
+    county_code = sprintf("%03d", as.integer(county_code)),
+    date = as.Date(date, format = "%m/%d/%Y"),
+    siteid = as.character(siteid)
+  )
 
 nrow(
   unique(
@@ -62,32 +61,18 @@ nrow(
   )
 )
 
-# ----------------------------------------------------------
+
 # 5. CLEAN DATES
-# ----------------------------------------------------------
 
 head(ozone$date)
 head(pm$date)
-
-# Ozone dates stored as mm/dd/yyyy strings
 
 ozone$date <- as.Date(
   ozone$date,
   format = "%m/%d/%Y"
 )
 
-# PM dates
-
-pm$date <- as.Date(pm$date)
-
-# Verify
-
-head(ozone$date)
-head(pm$date)
-
-# ----------------------------------------------------------
 # 6. STANDARDIZE COUNTY CODES
-# ----------------------------------------------------------
 
 ozone$county_code <- sprintf(
   "%03d",
@@ -102,9 +87,7 @@ pm$county_code <- sprintf(
 head(ozone$county_code)
 head(pm$county_code)
 
-# ----------------------------------------------------------
 # 7. VERIFY MERGE KEYS
-# ----------------------------------------------------------
 
 class(ozone$date)
 class(pm$date)
@@ -115,9 +98,7 @@ class(pm$siteid)
 class(ozone$county_code)
 class(pm$county_code)
 
-# ----------------------------------------------------------
 # 8. MERGE DATASETS
-# ----------------------------------------------------------
 
 merged <- left_join(
   ozone,
@@ -133,17 +114,14 @@ dim(merged)
 
 head(merged)
 
-# Check successful merge
 
 sum(!is.na(merged$pm25_value))
 
-# ----------------------------------------------------------
 # SECTION 1 QUESTION 2
 # SUMMARY STATISTICS
-# ----------------------------------------------------------
 
 summ_stats <- function(x) {
-
+  
   c(
     Mean = mean(x, na.rm = TRUE),
     Median = median(x, na.rm = TRUE),
@@ -151,7 +129,7 @@ summ_stats <- function(x) {
     Max = max(x, na.rm = TRUE),
     SD = sd(x, na.rm = TRUE)
   )
-
+  
 }
 
 table1 <- rbind(
@@ -162,10 +140,7 @@ table1 <- rbind(
 
 table1
 
-# ----------------------------------------------------------
 # SECTION 1 QUESTION 3
-# OZONE BY SOURCE
-# ----------------------------------------------------------
 
 table2 <- merged %>%
   group_by(ozone_source) %>%
@@ -180,10 +155,8 @@ table2 <- merged %>%
 
 table2
 
-# ----------------------------------------------------------
 # SECTION 1 QUESTION 5
 # CREATE COUNTY-DAY PANEL
-# ----------------------------------------------------------
 
 county_day <- merged %>%
   group_by(
@@ -203,10 +176,8 @@ county_day <- merged %>%
 
 head(county_day)
 
-# ----------------------------------------------------------
 # SECTION 1 QUESTION 6
 # COUNTIES MISSING DAYS
-# ----------------------------------------------------------
 
 total_days <- length(
   unique(county_day$date)
@@ -228,10 +199,7 @@ sum(
   missing_days$missing_days > 0
 )
 
-# ----------------------------------------------------------
 # SECTION 2 QUESTION 1
-# POLLUTION DISTRIBUTIONS
-# ----------------------------------------------------------
 
 county_day <- county_day %>%
   mutate(
@@ -264,10 +232,9 @@ ggplot() +
   ) +
   theme_minimal()
 
-# ----------------------------------------------------------
+
 # SECTION 2 QUESTION 2
 # LOS ANGELES FEBRUARY OZONE
-# ----------------------------------------------------------
 
 la_feb <- county_day %>%
   filter(
@@ -292,10 +259,8 @@ ggplot(
   ) +
   theme_minimal()
 
-# ----------------------------------------------------------
+
 # SECTION 3 QUESTION 1
-# FIXED EFFECTS REGRESSION
-# ----------------------------------------------------------
 
 model1 <- feols(
   mortality ~ aqi |
@@ -305,10 +270,8 @@ model1 <- feols(
 
 summary(model1)
 
-# ----------------------------------------------------------
 # SECTION 3 QUESTION 2
 # LAGGED AQI
-# ----------------------------------------------------------
 
 county_day <- county_day %>%
   arrange(
@@ -333,10 +296,8 @@ model2 <- feols(
 
 summary(model2)
 
-# ----------------------------------------------------------
 # SECTION 3 QUESTION 3
 # CBSA INTERACTION
-# ----------------------------------------------------------
 
 county_day <- county_day %>%
   mutate(
@@ -358,19 +319,11 @@ model3 <- feols(
 
 summary(model3)
 
-# ----------------------------------------------------------
-# REGRESSION TABLE
-# ----------------------------------------------------------
-
 etable(
   model1,
   model2,
   model3
 )
-
-# ----------------------------------------------------------
-# SAVE OUTPUTS
-# ----------------------------------------------------------
 
 write.csv(
   table1,
@@ -395,7 +348,3 @@ write.csv(
   "county_day_panel.csv",
   row.names = FALSE
 )
-
-# ==========================================================
-# END OF SCRIPT
-# ==========================================================
